@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 4: Evaluation, Testing & Monitoring</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0b0f1a;
+    --surface:   #131929;
+    --border:    #1e2d45;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --c1: #6366f1; /* Foundations       - indigo  */
+    --c2: #06b6d4; /* Eval Metrics      - cyan    */
+    --c3: #10b981; /* Frameworks        - emerald */
+    --c4: #f59e0b; /* Testing & CI/CD   - amber   */
+    --c5: #ef4444; /* Guardrails        - red     */
+    --c6: #a855f7; /* Resilience        - purple  */
+    --c7: #f97316; /* Observability     - orange  */
+    --c8: #0ea5e9; /* Production        - sky     */
+  }
+
+  html, body { width: 100%; height: 100%; background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+
+  /* ── HEADER ── */
+  #header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    padding: 14px 28px;
+    background: rgba(11,15,26,0.95);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; gap: 16px;
+  }
+  #back-btn {
+    display: none; align-items: center; gap: 6px;
+    background: none; border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px;
+    padding: 6px 14px; cursor: pointer; font-size: 13px;
+    transition: border-color .2s, background .2s;
+  }
+  #back-btn:hover { background: var(--surface); border-color: var(--muted); }
+  #back-btn svg { width:14px; height:14px; }
+  #title { font-size: 16px; font-weight: 600; letter-spacing: .01em; }
+  #subtitle { font-size: 13px; color: var(--muted); margin-left: auto; }
+
+  /* ── VIEWS ── */
+  #overview-view, #detail-view {
+    position: fixed; top: 57px; left: 0; right: 0; bottom: 0;
+    overflow-y: auto; padding: 28px;
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  .view-hidden { opacity: 0; pointer-events: none; transform: translateY(12px); }
+
+  /* ── CARD GRID ── */
+  #card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    max-width: 1200px; margin: 0 auto;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s;
+  }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent);
+    border-radius: 14px 14px 0 0;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,.4); border-color: var(--accent); }
+  .card-icon { font-size: 24px; margin-bottom: 10px; display: block; }
+  .card-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .card-count { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+  .card-previews { list-style: none; }
+  .card-previews li {
+    font-size: 12px; color: #94a3b8;
+    padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.04);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-previews li:last-child { border-bottom: none; }
+  .card-footer {
+    margin-top: 14px; font-size: 11px; font-weight: 600;
+    color: var(--accent); letter-spacing: .04em;
+  }
+
+  /* ── DETAIL VIEW ── */
+  #detail-inner {
+    max-width: 900px; margin: 0 auto;
+  }
+  #detail-theme-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 28px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  #detail-icon { font-size: 36px; }
+  #detail-name { font-size: 26px; font-weight: 800; }
+  #detail-tagline { font-size: 14px; color: var(--muted); margin-top: 2px; }
+
+  .topic-group { margin-bottom: 24px; }
+  .topic-title {
+    font-size: 14px; font-weight: 700;
+    color: var(--accent-text);
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .topic-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .topic-items { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+  .topic-items li {
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 13px;
+    color: #cbd5e1;
+    transition: background .15s, border-color .15s;
+  }
+  .topic-items li:hover { background: rgba(255,255,255,.08); border-color: var(--accent); }
+
+  /* highlight chip */
+  .topic-items li.key {
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  @media (max-width: 900px) { #card-grid { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 500px) { #card-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <button id="back-btn" onclick="showOverview()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    All Themes
+  </button>
+  <div id="title">Session 4 — Evaluation, Testing &amp; Monitoring</div>
+  <div id="subtitle">Introduction to LLMs for Software Developers</div>
+</div>
+
+<!-- OVERVIEW -->
+<div id="overview-view">
+  <div id="card-grid"></div>
+</div>
+
+<!-- DETAIL -->
+<div id="detail-view" class="view-hidden">
+  <div id="detail-inner">
+    <div id="detail-theme-header">
+      <span id="detail-icon"></span>
+      <div>
+        <div id="detail-name"></div>
+        <div id="detail-tagline"></div>
+      </div>
+    </div>
+    <div id="detail-body"></div>
+  </div>
+</div>
+
+<script>
+const themes = [
+  {
+    id: 'foundations',
+    name: 'Foundations',
+    icon: '🏗️',
+    color: 'var(--c1)',
+    tagline: 'Why LLM evaluation is fundamentally different from traditional software testing',
+    preview: ['Evaluation-Driven Dev', 'Golden Datasets', 'Non-determinism'],
+    sections: [
+      { title: 'Core Mindset Shift', key: true, items: ['Why LLM Eval ≠ Traditional Testing', 'HTTP 200 ≠ correct output', 'No binary pass/fail — probabilistic correctness', 'Outputs vary even at temperature=0'] },
+      { title: 'Evaluation-Driven Development (EDD)', key: true, items: ['Write evals before code (like TDD)', 'Monitor production to find failure modes', 'Add failures back into eval dataset', 'EDDOps paper — arXiv:2411.13768'] },
+      { title: 'Non-Determinism Handling', items: ['Multi-run consensus (3–5 runs, σ < 0.15)', 'Majority voting for classification tasks', 'Self-consistency sampling', 'Hard gates for critical dimensions (compliance)', 'Separate deterministic vs stochastic test layers'] },
+      { title: 'Golden Datasets', key: true, items: ['Log extraction — production failures & downvotes', 'Synthetic silver data generation', 'Negative / unanswerable cases (test "I don\'t know")', '10–20 examples to start', '~246 samples for statistical confidence (95% CI)', 'Version in Git alongside prompt versions'] },
+      { title: 'A/B Testing Foundations', items: ['Power analysis for sample sizing', 'LLMs need larger samples than traditional A/B tests', 'Run A/A test first to validate infrastructure', 'Never stop tests early — peeking causes false positives', 'Compare quality + UX + operational + safety simultaneously'] },
+    ]
+  },
+  {
+    id: 'metrics',
+    name: 'Evaluation Metrics',
+    icon: '📐',
+    color: 'var(--c2)',
+    tagline: 'Classical, RAG-specific, LLM-as-judge, code, and agreement metrics',
+    preview: ['BLEU / ROUGE / METEOR', 'RAGAS Faithfulness', 'G-Eval (LLM-as-Judge)'],
+    sections: [
+      { title: 'Classical Text Metrics', items: ['BLEU — n-gram precision + brevity penalty; any pₙ=0 kills score', 'ROUGE-N / ROUGE-L — recall-oriented, LCS-based', 'METEOR — recall-weighted, stemming + synonyms; 0.964 human correlation', 'BERTScore — contextual embeddings; ⚠️ antonyms score high'] },
+      { title: 'RAG-Specific Metrics (RAGAS)', key: true, items: ['Faithfulness — Supported / Total claims (2 LLM calls, costliest)', 'Answer Relevancy — reverse question generation + cosine similarity', 'Context Precision — weighted precision@k (rank matters)', 'Context Recall — reference claims in retrieved context'] },
+      { title: 'LLM-as-Judge / G-Eval', key: true, items: ['Chain-of-thought rubric auto-generation', 'Probability-weighted scoring (Spearman ρ = 0.514)', 'Position bias — favors first option in pairwise', 'Length bias — over-rewards verbose answers', 'Agreeableness bias — TNR drops below 25%'] },
+      { title: 'Code Evaluation', items: ['Pass@K — unbiased estimator formula; HumanEval SOTA ≈ 0.85+', 'CodeBLEU — BLEU + keyword weight + AST + data-flow graph matching'] },
+      { title: 'Inter-Annotator Agreement', items: ['Cohen\'s Kappa — 2 raters; κ > 0.70 = trustworthy AI judge', 'Fleiss\' Kappa — ≥ 2 raters, nominal data', 'Krippendorff\'s Alpha — any raters, any data type, handles missing; α ≥ 0.80 reliable'] },
+    ]
+  },
+  {
+    id: 'frameworks',
+    name: 'Evaluation Frameworks',
+    icon: '🧰',
+    color: 'var(--c3)',
+    tagline: 'Pydantic AI Evals, Phoenix, RAGAS, and DeepEval compared',
+    preview: ['Pydantic AI Evals', 'Phoenix / Arize (16 templates)', 'RAGAS v0.4.3'],
+    sections: [
+      { title: 'Pydantic AI Evals', key: true, items: ['Primitives: Case, Dataset, Evaluator', '11 built-in evaluators (EqualsExpected, Contains, MaxDuration, LLMJudge…)', 'Span-based evaluation via OpenTelemetry — test HOW a system works', 'LLM Judge → GradingOutput (reason, pass_, score)', 'repeat param runs each case N times for statistical analysis', '⚠️ SpanTree is ephemeral — not reconstructable from history'] },
+      { title: 'Phoenix / Arize', items: ['create_classifier() + evaluate_dataframe() API', 'Tool calling for reliable structured output (not text parsing)', '16 pre-built templates — Hallucination, RAG Relevance, Toxicity, Agent Path, SQL…', 'Hallucination evaluator: precision 0.93 / recall 0.72 → 28% of hallucinations undetected', 'Client-side (code) + Server-side (UI, no code)', 'Open-source ELv2, free cloud tier'] },
+      { title: 'RAGAS v0.4.3', key: true, items: ['New Collections API — llm_factory(), ascore(**kwargs)', 'Score disagreement across evaluator models (GPT-3.5 vs GPT-4 vs Claude vs Llama3)', 'Faithfulness: 95% human agreement on WikiEval; lower in real world', 'Context Relevance: only 70% human agreement', 'DiskCacheBackend reduces cost on large datasets', 'v0.3 → v0.4 migration: LangchainLLMWrapper → llm_factory()'] },
+      { title: 'DeepEval', items: ['G-Eval integration with custom rubrics', 'assert_test() — pytest-compatible', 'deepeval test run with -c (cache) and -n 4 (parallelism)', 'Works as drop-in pytest plugin for CI/CD'] },
+    ]
+  },
+  {
+    id: 'testing',
+    name: 'Testing & CI/CD',
+    icon: '🔁',
+    color: 'var(--c4)',
+    tagline: 'Promptfoo red teaming, pytest integration, and quality gate architecture',
+    preview: ['Promptfoo (YAML + red teaming)', 'Quality gates in GitHub Actions', 'fail-on-threshold: 85'],
+    sections: [
+      { title: 'Promptfoo', key: true, items: ['YAML-driven — no heavy Python scripts', 'Red teaming plugins: jailbreak, pii, prompt-injection, overreliance', 'GitHub Actions — promptfoo/promptfoo-action@v1', 'fail-on-threshold: 85 gates PRs on eval pass rate', 'Semantic cache (24h TTL) reduces repeat eval cost', 'Promptfoo caches LLM responses between runs'] },
+      { title: 'DeepEval pytest Integration', items: ['@pytest.mark.parametrize("golden", dataset.goldens)', 'assert_test(golden=golden, observed_callback=agent.answer)', 'poetry run deepeval test run test_file.py'] },
+      { title: 'Quality Gate Architecture', key: true, items: ['Step 1: Deterministic tests (format, JSON validity) — fast, cheap', 'Step 2: LLM-as-judge on golden dataset', 'Step 3: Per-metric thresholds (faithfulness ≥ 0.85, context_precision ≥ 0.80)', 'Step 4: Cost & latency budget check', 'Pass → allow merge | Fail → block with detailed report', 'GPT-4 judge: ~$1–3/run; GPT-4o-mini: ~$0.02/run', 'Run full suite nightly; smoke tests on every PR'] },
+      { title: 'A/B Testing', items: ['Power analysis for sample size (larger than traditional software A/B)', 'A/A test first to validate infrastructure', 'Compare quality + UX + operational + safety simultaneously', 'Never stop early — peeking leads to false positives'] },
+    ]
+  },
+  {
+    id: 'guardrails',
+    name: 'Guardrails & Safety',
+    icon: '🛡️',
+    color: 'var(--c5)',
+    tagline: 'Input/output validation, constrained decoding, content moderation, and injection defense',
+    preview: ['Guardrails AI (Guard class)', 'Outlines FSM decoding', 'Prompt Injection — OWASP #1'],
+    sections: [
+      { title: 'Guardrails AI', key: true, items: ['Guard class wraps LLM calls with composable validators', 'OnFailAction: exception, fix, reask, noop, filter, refrain, fix_reask', 'Validators return PassResult or FailResult (with optional fix_value)', 'Hub: guardrails hub install hub://guardrails/toxic_language', 'Apache 2.0 open-source'] },
+      { title: 'Constrained Decoding', items: ['Outlines — FSM converts JSON schema to token masks at generation time', 'Zero inference overhead; ⚠️ FSM compilation expensive for complex schemas', 'Microsoft Guidance — token healing fixes BPE boundary artifacts', '~50% runtime reduction via KV-cache reuse', '3 backends: outlines_core, xgrammar, llguidance'] },
+      { title: 'NeMo Guardrails', items: ['Colang — purpose-built dialog flow language', 'Rail types: input, output, dialog, retrieval, execution', 'Colang 2.0 (beta): event-driven, more flexible', 'Apache 2.0 open-source'] },
+      { title: 'Content Moderation', items: ['Llama Guard 3 — S1 violent crimes, S2 nonviolent, S3 sex crimes, S4 child exploitation, S5 defamation', 'Amazon Bedrock Automated Reasoning — formal proofs to prevent hallucinations', 'JSON strict mode — only valid JSON tokens generated'] },
+      { title: 'Hallucination Detection', key: true, items: ['HHEM (Vectara) — DeBERTa-v3 classifier, calibrated 0–1 probability score', 'HHEM: 1.5× better F1 than GPT-3.5; 0.6s on consumer GPU vs 35s for RAGAS+GPT-4', 'SelfCheckGPT — generate N samples, measure sentence consistency', 'High inconsistency → hallucination; NLI variant (DeBERTa) recommended'] },
+      { title: 'Prompt Injection', key: true, items: ['OWASP #1 LLM risk (2025)', 'Detection: classification-based (F1 up to 0.91), perplexity-based, attention-based, LLM-as-judge', '⚠️ No foolproof prevention exists', 'Best practice: layered defense — input validation + output filtering + privilege controls + human-in-loop'] },
+    ]
+  },
+  {
+    id: 'resilience',
+    name: 'Software Resilience',
+    icon: '⚡',
+    color: 'var(--c6)',
+    tagline: 'Retries, circuit breakers, and semantic caching for unreliable LLM APIs',
+    preview: ['Tenacity (exponential backoff)', 'Circuit Breaker pattern', 'Semantic Caching ~0.8 threshold'],
+    sections: [
+      { title: 'Retries with Exponential Backoff', key: true, items: ['tenacity library — @retry decorator', 'stop_after_attempt(3)', 'wait_exponential(multiplier=1, min=4, max=10)', 'before=before_log(logger, logging.INFO)', 'Jitter prevents thundering herd on provider recovery'] },
+      { title: 'Circuit Breaker Pattern', key: true, items: ['States: CLOSED (normal) → OPEN (fail-fast) → HALF_OPEN (testing recovery)', 'failure_threshold=5, recovery_timeout=30s', 'OPEN state blocks outbound LLM requests immediately', '⚠️ Fallback chains (GPT-4o → Claude 3.5) re-execute logging, budgets, governance — doubling overhead'] },
+      { title: 'Semantic Caching', key: true, items: ['Vectorize prompt → cosine similarity lookup (GPTCache, Redis)', 'Optimal threshold ~0.8: below = cache poisoning (false positives), above = cache misses', 'ANN search "edge flip" risk — identical queries may return different cached responses', 'Up to 68.8% cost reduction reported'] },
+    ]
+  },
+  {
+    id: 'observability',
+    name: 'Observability & Monitoring',
+    icon: '🔭',
+    color: 'var(--c7)',
+    tagline: 'Tracing, metrics, drift detection, alerting, and closing the feedback loop',
+    preview: ['Langfuse v3 tracing', 'Drift Detection (Wasserstein)', 'UI Feedback → Eval Pipeline'],
+    sections: [
+      { title: 'Langfuse v3', key: true, items: ['Architecture: Sessions → Traces → Observations (Generation, Span, Event)', 'Stack: ClickHouse + PostgreSQL + Redis/BullMQ + MinIO', 'Prompt versioning: immutable numbered versions + mutable labels (production, staging, latest)', 'Eval methods: LLM-as-judge (UI), human annotation queues, SDK-based scoring', 'Score analytics: Pearson/Spearman correlation, Cohen\'s Kappa, F1, MAE, RMSE', 'MIT-licensed self-hosted core'] },
+      { title: '5 Metric Categories', key: true, items: ['Performance — TTFT, TPOT, E2E latency, Goodput (high throughput ≠ high goodput)', 'Cost — per-request, per-1K tokens, by model/user/feature', 'Quality — LLM-judge scores, hallucination detection rate', 'Safety — guardrail trigger rate, PII events, injection attempt rate', 'Business — task completion rate, NPS/CSAT, retry/regeneration rate'] },
+      { title: 'OTel GenAI Conventions v1.40.0', items: ['gen_ai.operation.name, gen_ai.request.model, gen_ai.provider.name', 'Span naming: "{operation} {model}" (e.g. "chat gpt-4o")', 'gen_ai.client.token.usage histogram', 'Content capture opt-in: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true'] },
+      { title: 'Drift Detection', key: true, items: ['Types: input drift, output drift, concept drift, embedding drift', 'Wasserstein distance preferred over KS test for high-dimensional embeddings', 'PSI > 0.2 = significant drift', 'Canary prompts (fixed, unchanging inputs) surface behavioral drift'] },
+      { title: 'Alerting Without Fatigue', items: ['PagerDuty 2025: ~50 alerts/week, only 2–5% need action', 'Multi-signal alerts (latency P95 + grounding + hallucination rate together)', 'Adaptive thresholds accounting for seasonality', 'Tiered severity: P1 = customer-blocking, P2 = degraded quality, P3 = minor regression', 'AlertGuardian: 93.8–95.5% alert reduction, 98.5% action accuracy'] },
+      { title: 'UI Feedback Loop', items: ['Start with low-friction thumbs up/down', 'On negative → reveal free-form text or categorical dropdowns', 'Route data back into golden dataset and eval pipeline', 'Progressive disclosure — ask for more detail only when needed'] },
+    ]
+  },
+  {
+    id: 'production',
+    name: 'Production Infrastructure',
+    icon: '🏭',
+    color: 'var(--c8)',
+    tagline: 'Self-hosted observability stack, LiteLLM gateway, MLflow, and air-gapped deployment',
+    preview: ['LiteLLM (1,500+ req/sec)', 'Self-hosted OTel stack', 'Air-gapped Kubernetes'],
+    sections: [
+      { title: 'Self-hosted Observability Stack', key: true, items: ['LLM App → LiteLLM Proxy → LLM Providers / Local vLLM', 'Langfuse SDK → Langfuse Web + Worker → ClickHouse + PG + Redis + MinIO', 'Custom Exporter → Prometheus → Grafana + Alertmanager', 'Evidently AI (batch drift detection)', 'MLflow (experiment tracking)', 'Min requirements: 4 cores, 16 GiB RAM, 100 GiB storage'] },
+      { title: 'LiteLLM Gateway', key: true, items: ['OpenAI-compatible proxy to 100+ providers', '1,500+ req/sec; strategies: simple-shuffle, least-busy, latency-based-routing', 'Automatic failover', 'Per-user virtual keys with budget limits', 'Response caching', 'Langfuse integration: success_callback: ["langfuse"]', '⚠️ Langfuse does not natively expose Prometheus metrics — needs custom exporter'] },
+      { title: 'MLflow for LLM Experiments', items: ['mlflow.genai.evaluate() with built-in scorers (Correctness, Guidelines)', 'mlflow.openai.autolog() for automatic tracing', 'mlflow-tracing package optimized for production async logging'] },
+      { title: 'Air-gapped Deployment', items: ['vLLM or Ollama for local inference; weights pre-downloaded to MinIO', 'Langfuse self-hosted, telemetry disabled', 'Evidently AI fully offline (pure Python)', 'Local LLM-as-judge model for evaluation', 'Kubernetes v1.36+ enhanced air-gapped AI workload support', 'Langfuse: ISO 27001 + SOC 2; Phoenix: SOC 2 + HIPAA'] },
+    ]
+  },
+];
+
+// ── Render card grid
+const grid = document.getElementById('card-grid');
+themes.forEach(t => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.setProperty('--accent', t.color);
+  card.innerHTML = `
+    <span class="card-icon">${t.icon}</span>
+    <div class="card-name">${t.name}</div>
+    <div class="card-count">${t.sections.reduce((a,s)=>a+s.items.length,0)} topics across ${t.sections.length} sections</div>
+    <ul class="card-previews">${t.preview.map(p=>`<li>${p}</li>`).join('')}</ul>
+    <div class="card-footer">Explore →</div>
+  `;
+  card.addEventListener('click', () => showDetail(t));
+  grid.appendChild(card);
+});
+
+// ── Detail view
+function showDetail(t) {
+  document.documentElement.style.setProperty('--accent', t.color);
+  document.documentElement.style.setProperty('--accent-text', t.color);
+
+  document.getElementById('detail-icon').textContent = t.icon;
+  document.getElementById('detail-name').textContent = t.name;
+  document.getElementById('detail-tagline').textContent = t.tagline;
+
+  const body = document.getElementById('detail-body');
+  body.innerHTML = t.sections.map(s => `
+    <div class="topic-group">
+      <div class="topic-title">${s.title}</div>
+      <ul class="topic-items">
+        ${s.items.map(item => `<li ${s.key?'class="key"':''}>${item}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+
+  document.getElementById('overview-view').classList.add('view-hidden');
+  document.getElementById('detail-view').classList.remove('view-hidden');
+  document.getElementById('back-btn').style.display = 'flex';
+  document.getElementById('detail-view').scrollTop = 0;
+}
+
+function showOverview() {
+  document.getElementById('detail-view').classList.add('view-hidden');
+  document.getElementById('overview-view').classList.remove('view-hidden');
+  document.getElementById('back-btn').style.display = 'none';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') showOverview(); });
+</script>
+</body>
+</html>
