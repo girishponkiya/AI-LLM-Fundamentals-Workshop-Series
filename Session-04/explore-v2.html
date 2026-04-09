@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session 4: LLM Evaluation, Testing & Monitoring</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:       #090e1a;
+      --surface:  #111827;
+      --surface2: #172032;
+      --border:   #1b2b42;
+      --text:     #dde6f4;
+      --muted:    #566882;
+      --accent:   #6366f1;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ── HEADER ── */
+    .hdr {
+      height: 50px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px 0 22px;
+      flex-shrink: 0;
+    }
+    .hdr-title { font-size: 14px; font-weight: 600; letter-spacing: 0.4px; }
+    .hdr-hint  { font-size: 11.5px; color: var(--muted); }
+
+    /* ── LAYOUT ── */
+    .wrap { display: flex; height: calc(100vh - 50px); overflow: hidden; }
+
+    /* ── SIDEBAR ── */
+    .sb {
+      width: 226px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto; flex-shrink: 0;
+    }
+    .sb::-webkit-scrollbar { width: 3px; }
+    .sb::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .si {
+      padding: 10px 13px;
+      cursor: pointer; border-left: 3px solid transparent;
+      transition: background 140ms, border-color 140ms;
+      user-select: none; display: flex; align-items: center; gap: 8px;
+      font-size: 13px;
+    }
+    .si:hover { background: var(--surface2); }
+    .si.th   { font-weight: 500; }
+    .si.th.on { background: var(--surface2); border-left-color: var(--accent); }
+    .si.se   { padding-left: 34px; color: var(--muted); font-size: 12px; }
+    .si.se.on { color: var(--text); border-left-color: var(--accent); }
+    .arr { margin-left: auto; font-size: 11px; opacity: 0.45; transition: transform 200ms; }
+    .si.th.exp .arr { transform: rotate(90deg); }
+
+    /* ── TREE AREA ── */
+    .mid { flex: 1; background: var(--bg); overflow: hidden; position: relative; }
+    #svg { width: 100%; height: 100%; display: block; }
+
+    /* SVG element styles */
+    .lk       { fill: none; }
+    .lk-rt    { stroke: #1c3050; stroke-width: 1.5px; }
+    .lk-ts    { stroke: #1a2a40; stroke-width: 1px; stroke-dasharray: 3 3; }
+
+    .nd-root circle.outer { fill: #0c1520; stroke: #2a4060; stroke-width: 2px; }
+    .nd-root circle.inner { fill: none; stroke: #1e3050; stroke-width: 1px; }
+    .nd-root text { text-anchor: middle; pointer-events: none; }
+
+    .nd-th  { cursor: pointer; }
+    .nd-th .hitbox  { fill: transparent; cursor: pointer; }
+    .nd-th .thdot   { transition: filter 150ms; }
+    .nd-th:hover .thdot { filter: brightness(1.25); }
+    .nd-th.on .thdot    { filter: brightness(1.3) drop-shadow(0 0 5px currentColor); }
+    .nd-th text { pointer-events: none; }
+
+    .nd-se .box { transition: fill 150ms, stroke 150ms; cursor: pointer; }
+    .nd-se text { pointer-events: none; transition: fill 150ms; }
+    .nd-se:hover .box { fill: #1a2840 !important; stroke: #334d70 !important; }
+    .nd-se:hover text { fill: #b8cce0 !important; }
+    .nd-se.on .box  { fill: #1d3050 !important; stroke: #5060c8 !important; stroke-width: 2px !important; }
+    .nd-se.on text  { fill: #dde8f8 !important; }
+
+    /* ── RHS PANEL (wider) ── */
+    .rhs {
+      width: 430px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      position: fixed; right: 0; top: 50px;
+      height: calc(100vh - 50px);
+      transform: translateX(100%);
+      transition: transform 280ms cubic-bezier(0.4,0,0.2,1);
+      z-index: 100; display: flex; flex-direction: column;
+    }
+    .rhs.open { transform: translateX(0); }
+
+    .rhs-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 13px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 4px;
+      font-size: 10.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.6px;
+    }
+    .xbtn {
+      background: none; border: none; color: var(--muted); font-size: 22px;
+      cursor: pointer; width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 4px; transition: all 140ms;
+    }
+    .xbtn:hover { background: var(--surface2); color: var(--text); }
+
+    .rhs-body { overflow-y: auto; flex: 1; padding: 20px 22px; }
+    .rhs-body::-webkit-scrollbar { width: 3px; }
+    .rhs-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    h1.rtitle { font-size: 18px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
+    .tagline   { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.65; }
+
+    .rs { margin-bottom: 20px; }
+    .rl {
+      font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.7px; color: var(--muted); margin-bottom: 10px;
+    }
+    .rdesc { font-size: 13px; line-height: 1.7; color: var(--text); }
+
+    .kp { list-style: none; }
+    .kp li { font-size: 13px; margin-bottom: 9px; line-height: 1.55; padding-left: 20px; position: relative; }
+    .kp li.core::before { content:'★'; position:absolute; left:0; color:var(--accent); font-weight:700; }
+    .kp li:not(.core)::before { content:'·'; position:absolute; left:4px; color:var(--muted); font-size:20px; line-height:1; top:-2px; }
+
+    .cw { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
+    .cl {
+      display: flex; align-items: center;
+      padding: 7px 12px; border-bottom: 1px solid var(--border);
+      font-size: 10.5px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .cw pre { margin: 0; overflow-x: auto; }
+    .cw code {
+      font-family: 'Fira Code','Cascadia Code','Courier New',monospace;
+      font-size: 11.5px; line-height: 1.55; display: block; padding: 12px;
+    }
+    .hljs { background: transparent; padding: 0; }
+
+    hr.div { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+    .refs { list-style: none; }
+    .refs li { margin-bottom: 12px; }
+    .refs a { font-size: 13px; color: var(--accent); text-decoration: none; line-height: 1.4; display: block; }
+    .refs a:hover { text-decoration: underline; }
+    .rnote { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+    .cards { display: flex; flex-direction: column; gap: 9px; }
+    .card {
+      padding: 12px 14px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 6px;
+      cursor: pointer; transition: border-color 140ms, background 140ms;
+    }
+    .card:hover { border-color: var(--accent); background: var(--bg); }
+    .ctitle { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .cdesc  { font-size: 11.5px; color: var(--muted); line-height: 1.45;
+               display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
+  </style>
+</head>
+<body>
+
+<div class="hdr">
+  <span class="hdr-title">SESSION 4 &nbsp;│&nbsp; Evaluation, Testing &amp; Monitoring</span>
+  <span class="hdr-hint">Click a theme to expand · Scroll to zoom · Drag to pan</span>
+</div>
+
+<div class="wrap">
+  <div class="sb" id="sb"></div>
+  <div class="mid"><svg id="svg"></svg></div>
+  <div class="rhs" id="rhs">
+    <div class="rhs-hd">
+      <div class="badge" id="badge"></div>
+      <button class="xbtn" id="xbtn">×</button>
+    </div>
+    <div class="rhs-body" id="rbody"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+<script src="session4-data.js"></script>
+
+<script>
+'use strict';
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const state = { expandedTheme: null, selectedTheme: null, selectedSection: null };
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+const esc  = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const trunc = (s, n) => s.length > n ? s.slice(0, n-1) + '…' : s;
+const getTheme = id => THEME_DATA.find(t => t.id === id);
+const getSec   = (tid, sid) => { const t = getTheme(tid); return t && t.sections.find(s => s.id === sid); };
+
+// ─── SIDEBAR ──────────────────────────────────────────────────────────────────
+function renderSB() {
+  const el = document.getElementById('sb');
+  let h = '';
+  THEME_DATA.forEach(t => {
+    const ex = state.expandedTheme === t.id;
+    const ac = state.selectedTheme  === t.id;
+    h += `<div class="si th${ac?' on':''}${ex?' exp':''}" onclick="clickTheme('${t.id}')">
+            <span style="font-size:15px">${t.icon}</span>
+            <span>${esc(t.name)}</span>
+            <span class="arr">›</span>
+          </div>`;
+    if (ex) t.sections.forEach(s => {
+      const sa = state.selectedSection === s.id;
+      h += `<div class="si se${sa?' on':''}" onclick="clickSec(event,'${t.id}','${s.id}')">
+              ${esc(trunc(s.title, 28))}
+            </div>`;
+    });
+  });
+  el.innerHTML = h;
+}
+
+// ─── CLICK HANDLERS ───────────────────────────────────────────────────────────
+function clickTheme(tid) {
+  if (state.expandedTheme === tid) {
+    state.expandedTheme = null; state.selectedTheme = null; state.selectedSection = null;
+    closeRHS();
+  } else {
+    state.expandedTheme = tid; state.selectedTheme = tid; state.selectedSection = null;
+    renderSB(); updateTree(); showTheme(tid);
+  }
+}
+
+function clickSec(e, tid, sid) {
+  if (e) e.stopPropagation();
+  state.expandedTheme = tid; state.selectedTheme = tid; state.selectedSection = sid;
+  renderSB(); updateTree(); showSec(tid, sid);
+}
+
+function closeRHS() {
+  document.getElementById('rhs').classList.remove('open');
+  renderSB(); updateTree();
+}
+
+document.getElementById('xbtn').addEventListener('click', () => {
+  state.selectedSection = null; state.selectedTheme = null; closeRHS();
+});
+
+// ─── RHS CONTENT ──────────────────────────────────────────────────────────────
+function setBadge(theme) {
+  const b = document.getElementById('badge');
+  b.style.cssText = `background:${theme.color}1e;color:${theme.color};border:1px solid ${theme.color}40`;
+  b.innerHTML = `${theme.icon} ${esc(theme.name)}`;
+}
+
+function showTheme(tid) {
+  const t = getTheme(tid); if (!t) return;
+  setBadge(t);
+  const cards = t.sections.map(s =>
+    `<div class="card" onclick="clickSec(null,'${tid}','${s.id}')">
+       <div class="ctitle">${esc(s.title)}</div>
+       <div class="cdesc">${esc(s.description)}</div>
+     </div>`).join('');
+  document.getElementById('rbody').innerHTML = `
+    <h1 class="rtitle">${t.icon} ${esc(t.name)}</h1>
+    <p class="tagline">${esc(t.tagline)}</p>
+    <div class="rs">
+      <p class="rl">${t.sections.length} Sections — click to explore</p>
+      <div class="cards">${cards}</div>
+    </div>`;
+  document.getElementById('rhs').classList.add('open');
+}
+
+function showSec(tid, sid) {
+  const t = getTheme(tid); const s = getSec(tid, sid);
+  if (!t || !s) return;
+  setBadge(t);
+
+  let h = `<h1 class="rtitle">${esc(s.title)}</h1>`;
+
+  if (s.description) h += `<div class="rs"><p class="rl">Overview</p><p class="rdesc">${esc(s.description)}</p></div>`;
+
+  if (s.keyPoints?.length) {
+    const pts = s.keyPoints.map(p => `<li class="${p.core?'core':''}">${esc(p.text)}</li>`).join('');
+    h += `<div class="rs"><p class="rl">Key Points &nbsp;<span style="color:${t.color};font-size:9.5px">★ = core</span></p>
+           <ul class="kp">${pts}</ul></div>`;
+  }
+
+  const cb = (heading, lbl, lang, code) => `
+    <div class="rs"><p class="rl">${heading}</p>
+      <div class="cw">
+        <div class="cl">${esc(lbl)}</div>
+        <pre><code class="language-${lang}">${esc(code)}</code></pre>
+      </div>
+    </div>`;
+
+  if (s.pseudocode) h += cb('Concept', s.pseudocode.label, s.pseudocode.lang, s.pseudocode.code);
+  if (s.actualCode)  h += cb('Example', s.actualCode.label,  s.actualCode.lang,  s.actualCode.code);
+
+  if (s.references?.length) {
+    const refs = s.references.map(r =>
+      `<li><a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a>
+           ${r.note ? `<div class="rnote">${esc(r.note)}</div>` : ''}</li>`).join('');
+    h += `<hr class="div"><div class="rs"><p class="rl">References</p><ol class="refs">${refs}</ol></div>`;
+  }
+
+  const rb = document.getElementById('rbody');
+  rb.innerHTML = h; rb.scrollTop = 0;
+  setTimeout(() => rb.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b)), 0);
+  document.getElementById('rhs').classList.add('open');
+}
+
+// ─── D3 TREE  (accordion: sections drop BELOW their theme) ────────────────────
+const svgEl = document.getElementById('svg');
+const svg   = d3.select(svgEl);
+const treeG = svg.append('g').attr('class', 'tree-g');  // single zoom container
+
+const zoom = d3.zoom().scaleExtent([0.18, 3])
+  .on('zoom', ev => treeG.attr('transform', ev.transform));
+svg.call(zoom);
+
+// Layout parameters
+const ROOT_X  = 0;    // root node x
+const TH_X    = 200;  // theme circle x
+const SEC_X   = 320;  // section rect x  (well clear of theme label text)
+const TH_H    = 58;   // px between successive theme rows (collapsed)
+const SEC_H   = 44;   // px between successive section rows
+const SEC_GAP = 10;   // extra vertical gap before/after a section block
+
+// ── Custom accordion layout (replaces d3.tree()) ─────────────────────────────
+function computeLayout() {
+  const items = [];
+  let y = 0;
+
+  THEME_DATA.forEach(theme => {
+    items.push({ kind: 'theme', theme, rawY: y });
+    y += TH_H;
+    if (state.expandedTheme === theme.id) {
+      y += SEC_GAP * 0.4;
+      theme.sections.forEach(sec => {
+        items.push({ kind: 'section', sec, theme, rawY: y });
+        y += SEC_H;
+      });
+      y += SEC_GAP;
+    }
+  });
+
+  // Centre the whole block vertically
+  const totalH = y - TH_H;
+  const off    = -(totalH / 2);
+
+  const nodes = [], links = [], thMap = {};
+
+  const root = { id: 'session4', type: 'root', x: ROOT_X, y: 0 };
+  nodes.push(root);
+
+  items.forEach(item => {
+    if (item.kind === 'theme') {
+      const n = {
+        id: item.theme.id, type: 'theme',
+        name: item.theme.name, icon: item.theme.icon, color: item.theme.color,
+        x: TH_X, y: item.rawY + off
+      };
+      nodes.push(n); thMap[n.id] = n;
+      links.push({ id: `r--${n.id}`, s: root, t: n, kind: 'rt' });
+    } else {
+      const tn = thMap[item.theme.id];
+      const n = {
+        id: item.sec.id, type: 'section',
+        name: item.sec.title, themeId: item.theme.id,
+        x: SEC_X, y: item.rawY + off
+      };
+      nodes.push(n);
+      // path from BOTTOM-LEFT of theme circle down to section
+      links.push({ id: `${tn.id}--${n.id}`, s: tn, t: n, kind: 'ts' });
+    }
+  });
+
+  return { nodes, links };
+}
+
+// Link path functions
+function pathRT(d) {           // root → theme: horizontal bezier
+  const mid = (d.s.x + d.t.x) / 2;
+  return `M${d.s.x},${d.s.y} C${mid},${d.s.y} ${mid},${d.t.y} ${d.t.x - 21},${d.t.y}`;
+}
+function pathTS(d) {           // theme → section: bezier from circle bottom, curves down-right
+  const sx   = d.s.x;
+  const sy0  = d.s.y + 21;    // bottom of theme circle (r=20 + 1px)
+  const ex   = d.t.x;
+  const ey   = d.t.y;
+  const midY = (sy0 + ey) / 2;
+  // S-curve: drops straight down from circle bottom, sweeps right to section left edge
+  // Stays entirely BELOW the theme label text row
+  return `M${sx},${sy0} C${sx},${midY} ${ex},${midY} ${ex},${ey}`;
+}
+
+// Node CSS class
+function nClass(d) {
+  if (d.type === 'root')    return 'nd-root';
+  if (d.type === 'theme')   return `nd-th${state.selectedTheme === d.id ? ' on' : ''}`;
+  if (d.type === 'section') return `nd-se${state.selectedSection === d.id ? ' on' : ''}`;
+  return '';
+}
+
+// ── Main render ───────────────────────────────────────────────────────────────
+function updateTree() {
+  const { nodes, links } = computeLayout();
+
+  // ── Links ──
+  const lkSel = treeG.selectAll('path.lk').data(links, d => d.id);
+  lkSel.exit().transition().duration(220).style('opacity', 0).remove();
+
+  const lkEnter = lkSel.enter().append('path')
+    .attr('class', d => `lk lk-${d.kind}`)
+    .style('opacity', 0);
+
+  lkSel.merge(lkEnter).transition().duration(300)
+    .style('opacity', 1)
+    .attr('d', d => d.kind === 'rt' ? pathRT(d) : pathTS(d));
+
+  // ── Nodes ──
+  const ndSel = treeG.selectAll('g.nd').data(nodes, d => d.id);
+  ndSel.exit().transition().duration(220).style('opacity', 0).remove();
+
+  const ndEnter = ndSel.enter().append('g')
+    .attr('class', d => `nd ${nClass(d)}`)
+    .attr('transform', d => `translate(${d.x},${d.y})`)
+    .style('opacity', 0)
+    .on('click', (ev, d) => {
+      ev.stopPropagation();
+      if (d.type === 'theme')   clickTheme(d.id);
+      if (d.type === 'section') clickSec(null, d.themeId, d.id);
+    });
+
+  // Build shapes once on enter
+  ndEnter.each(function(d) {
+    const el = d3.select(this);
+
+    if (d.type === 'root') {
+      // ── Root: double-ring with "LLM Eval" label ──
+      el.append('circle').attr('r', 28).attr('class', 'outer');
+      el.append('circle').attr('r', 19).attr('class', 'inner');
+      el.append('text').attr('dy', '-0.28em')
+        .text('LLM').style('font-size', '9px').style('fill', '#3d5a78')
+        .style('font-weight', '700').style('letter-spacing', '1.5px');
+      el.append('text').attr('dy', '0.88em')
+        .text('Eval').style('font-size', '11px').style('fill', '#5a7898')
+        .style('font-weight', '600').style('letter-spacing', '0.5px');
+    }
+
+    else if (d.type === 'theme') {
+      // Transparent hitbox covering entire row for easier clicking
+      el.append('rect').attr('class', 'hitbox')
+        .attr('x', -22).attr('y', -22).attr('width', 340).attr('height', 44);
+      // Coloured circle
+      el.append('circle').attr('class', 'thdot').attr('r', 20)
+        .style('fill', d.color).style('opacity', 0.82);
+      // Emoji icon
+      el.append('text').attr('dy', '0.38em').text(d.icon)
+        .style('font-size', '13px').style('text-anchor', 'middle');
+      // Theme name label
+      el.append('text').attr('class', 'thlabel')
+        .attr('x', 27).attr('dy', '0.38em').text(d.name)
+        .style('font-size', '13px').style('font-weight', '500').style('fill', '#d8e4f2')
+        .style('text-anchor', 'start');
+    }
+
+    else { // section
+      // Rect
+      el.append('rect').attr('class', 'box')
+        .attr('x', 0).attr('y', -13).attr('width', 188).attr('height', 26).attr('rx', 4)
+        .style('fill', '#10192a').style('stroke', '#1b2d48').style('stroke-width', '1.5px');
+      // Label
+      el.append('text').attr('x', 10).attr('dy', '0.35em')
+        .text(trunc(d.name, 27))
+        .style('font-size', '11.5px').style('fill', '#4f6a84').style('text-anchor', 'start');
+    }
+  });
+
+  // Merge: animate position
+  const merged = ndSel.merge(ndEnter);
+  merged.transition().duration(300).style('opacity', 1)
+    .attr('transform', d => `translate(${d.x},${d.y})`);
+
+  // Sync CSS class with state (drives CSS hover/active rules)
+  merged.attr('class', d => `nd ${nClass(d)}`);
+
+  // Imperatively sync section fill/stroke (faster than CSS class transitions for these)
+  merged.filter(d => d.type === 'section').select('.box')
+    .style('stroke', d => state.selectedSection === d.id ? '#5060c8' : '#1b2d48')
+    .style('fill',   d => state.selectedSection === d.id ? '#1a2f50' : '#10192a');
+  merged.filter(d => d.type === 'section').select('text')
+    .style('fill',   d => state.selectedSection === d.id ? '#d4e4f8' : '#4f6a84');
+}
+
+function centerTree() {
+  const w = svgEl.clientWidth  || 900;
+  const h = svgEl.clientHeight || 600;
+  svg.call(zoom.transform, d3.zoomIdentity.translate(w * 0.14, h * 0.5));
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderSB(); updateTree(); centerTree();
+window.addEventListener('resize', () => { updateTree(); centerTree(); });
+</script>
+</body>
+</html>
