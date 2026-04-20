@@ -45,7 +45,7 @@ Participants should read before attending:
 
 | File / Folder | Description | Status |
 |---------------|-------------|--------|
-| `slides/` | Prensentation | 🔜 To generate |
+| `slides/` | Prensentation | ✅ (almost) Ready |
 | `wiki/` | Deep-dive reference articles (5 articles, one per technique) | ✅ (partial) Ready |
 | `demo/` | Jupyter notebooks for hands-on demos (5 notebooks) | ✅ Ready |
 
