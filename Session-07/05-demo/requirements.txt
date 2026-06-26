@@ -1,0 +1,15 @@
+# Session 7 — Application Development & Tool Integration
+# Verified working set (tested 2026-06): pydantic-ai 1.68 + mlflow autolog.
+#
+# IMPORTANT PIN: MLflow's pydantic_ai autolog patches Agent.__init__ in a way that
+# breaks on pydantic-ai >= 2.0 (the `instrument=` kwarg was removed in 2.0).
+# Keep pydantic-ai < 1.69 until MLflow ships 2.x support.
+
+pydantic-ai-slim[openai,mcp]>=1.0,<1.69
+mlflow>=3.2,<4            # you run 3.10; tracing + autolog verified
+openai>=1.50,<2.0
+python-dotenv>=1.0
+nest-asyncio>=1.6        # lets `await` work inside Jupyter cells
+pandas>=2.2
+numpy>=1.26
+# demo_03 only — embeddings via your OpenAI-compatible endpoint (no torch needed)
