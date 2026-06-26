@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Session 7 — Application Development & Tool Integration</title>
+<style>
+  :root{ --ink:#0F172A; --teal:#0F766E; --teal2:#14B8A6; --muted:#64748B; --body:#1E293B;
+         --line:#E2E8F0; --tint:#F0FDFA; --bg:#F8FAFC; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--body);
+       background:var(--bg);line-height:1.55}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 22px 80px}
+  header h1{font-family:Cambria,Georgia,serif;font-size:34px;color:var(--ink);margin:0 0 6px}
+  .kicker{font-size:12px;font-weight:700;letter-spacing:2px;color:var(--teal);text-transform:uppercase}
+  .sub{color:var(--muted);font-size:17px;margin:6px 0 0}
+  .thread{margin:18px 0 26px;padding:14px 18px;background:var(--tint);border:1px solid #99F6E4;
+          border-radius:12px;font-style:italic;color:var(--ink);font-size:15px}
+  .disease{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:26px;
+           box-shadow:0 6px 18px rgba(100,116,139,.10)}
+  .disease .q{font-style:italic;color:var(--ink);font-size:17px}
+  .disease .a{color:var(--body);font-size:17px;margin:8px 0}
+  .verdict{color:#B91C1C;font-weight:600;margin-top:6px}
+  .fails{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .fail{font-size:13px;background:#FEF2F2;color:#7F1D1D;border:1px solid #FECACA;border-radius:999px;padding:4px 12px}
+  .arrow{flex:0 0 100%;text-align:center}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+        box-shadow:0 6px 18px rgba(100,116,139,.08);transition:transform .15s,box-shadow .15s}
+  .card:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(100,116,139,.16)}
+  .chead{display:flex;align-items:center;gap:14px;padding:16px 18px;cursor:pointer;user-select:none}
+  .badge{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;
+         font-weight:700;font-family:Cambria,serif;font-size:20px;flex:0 0 40px}
+  .ctitle{font-family:Cambria,serif;font-size:20px;font-weight:700;color:var(--ink);margin:0}
+  .ctag{font-size:12.5px;color:var(--muted);margin-top:1px}
+  .chev{margin-left:auto;color:#CBD5E1;font-size:18px;transition:transform .2s}
+  .card.open .chev{transform:rotate(90deg)}
+  .body{max-height:0;overflow:hidden;transition:max-height .28s ease}
+  .card.open .body{max-height:460px}
+  .body ul{margin:0;padding:6px 20px 18px 38px}
+  .body li{margin:7px 0;font-size:14.5px}
+  .wikilink{display:inline-block;margin:0 20px 16px 38px;font-size:13px;color:var(--teal);text-decoration:none;font-weight:600}
+  .section-label{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--muted);
+                 text-transform:uppercase;margin:30px 0 12px}
+  .mcp{background:#fff;border:1px solid #99F6E4;border-radius:14px;box-shadow:0 6px 18px rgba(15,118,110,.12)}
+  .demos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:720px){.demos{grid-template-columns:1fr}}
+  .demo{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .demo b{font-family:Cambria,serif;color:var(--ink);font-size:15px}
+  .demo p{margin:6px 0 0;font-size:13px;color:var(--muted)}
+  footer{margin-top:36px;color:var(--muted);font-size:13px;text-align:center}
+  code{font-family:"Courier New",monospace;background:#0F172A;color:#E2E8F0;padding:1px 6px;border-radius:5px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">AI &amp; LLM Fundamentals · Session 7</div>
+    <h1 id="title"></h1>
+    <p class="sub" id="sub"></p>
+  </header>
+  <div class="thread" id="thread"></div>
+
+  <div class="disease" id="disease"></div>
+
+  <div class="section-label">The four cures — click to expand</div>
+  <div class="grid" id="layers"></div>
+
+  <div class="section-label">The integration standard</div>
+  <div class="card mcp" id="mcp"></div>
+
+  <div class="section-label">Demos</div>
+  <div class="demos" id="demos"></div>
+
+  <footer>Built with the session-forge method · open the wiki in <code>03-wiki/</code> · deck in <code>04-slides/</code></footer>
+</div>
+
+<script src="session7-data.js"></script>
+<script>
+  const S = window.SESSION7;
+  title.textContent = S.title;
+  sub.textContent = S.subtitle;
+  thread.textContent = "↳ " + S.thread;
+
+  disease.innerHTML = `
+    <div class="section-label" style="margin:0 0 8px;color:#B91C1C">${S.hook.label}</div>
+    <div class="q">${S.hook.customer}</div>
+    <div class="a">${S.hook.bot}</div>
+    <div class="verdict">${S.hook.verdict}</div>
+    <div class="fails">${S.hook.failures.map(f=>`<span class="fail">✕ ${f}</span>`).join("")}</div>`;
+
+  function card(obj, n, color){
+    const points = obj.points.map(p=>`<li>${p}</li>`).join("");
+    const badge = n ? `<div class="badge" style="background:${color}">${n}</div>` : `<div class="badge" style="background:${color}">∞</div>`;
+    return `<div class="chead">${badge}
+        <div><p class="ctitle">${obj.title}</p><div class="ctag">${obj.tag||""}</div></div>
+        <div class="chev">▸</div></div>
+      <div class="body"><ul>${points}</ul></div>
+      ${obj.wiki?`<a class="wikilink" href="${obj.wiki}">Read the wiki page →</a>`:""}`;
+  }
+
+  layers.innerHTML = S.layers.map(l=>`<div class="card">${card(l, l.n, l.color)}</div>`).join("");
+  mcp.innerHTML = card(S.mcp, null, S.mcp.color);
+  demos.innerHTML = S.demos.map(d=>`<div class="demo"><b>${d.title}</b><p>${d.note}</p></div>`).join("");
+
+  document.querySelectorAll(".card").forEach(c=>{
+    c.querySelector(".chead").addEventListener("click", ()=> c.classList.toggle("open"));
+  });
+  // open the first layer by default
+  document.querySelector("#layers .card").classList.add("open");
+</script>
+</body>
+</html>
