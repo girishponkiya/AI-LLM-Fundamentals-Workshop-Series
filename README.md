@@ -17,13 +17,13 @@
 
 | # | Title | Status | Folder |
 |---|-------|--------|--------|
-| 1 | LLM Paradigm Shift (Probabilistic Thinking) | ✅ Complete | `Session 01 - LLM Paradigm Shift/` |
-| 2 | LLM Internals – Tokenization and Basic Architecture | ✅ Complete | *(no separate files)* |
-| 3 | LLM Internals – Decoding and Text Generation | ✅ Complete | `Session 03 - Decoding and Text Generation/` |
-| 4 | Evaluation, Testing, and Error Handling | 🔄 In Preparation | `Session 04 - Evaluation, Testing, and Monitoring/` |
-| 5 | Core Prompt Engineering Techniques | 🔜 Upcoming | — |
-| 6 | Advanced Prompt Engineering | 🔜 Upcoming | — |
-| 7 | Application Development & Tool Integration | 🔜 Upcoming | — |
+| 1 | LLM Paradigm Shift (Probabilistic Thinking) | ✅ Complete | *(documented below)* |
+| 2 | LLM Internals – Tokenization and Basic Architecture | ✅ Complete | *(documented below)* |
+| 3 | LLM Internals – Decoding and Text Generation | ✅ Complete | *(documented below)* |
+| 4 | Evaluation, Testing, and Error Handling | ✅ Complete | `Session-04/` |
+| 5 | Core Prompt Engineering Techniques | ✅ Complete | `Session-05/` |
+| 6 | Advanced Prompt Engineering | ✅ Complete | `Session-06/` |
+| 7 | Application Development & Tool Integration | ✅ Complete | `Session-07/` |
 | 8 | Advanced Customization – Prompting vs. RAG vs. Fine-Tuning vs. Agents | 🔜 Upcoming | — |
 
 ---
