@@ -123,7 +123,7 @@ Covers the inference cycle (Prefill vs. Decode phase, TTFT vs. TPOT), logits and
 
 **Reading:**
 - [AI Agents Course](https://huggingface.co/learn/agents-course)
-- [Simple RAG for GitHub issues using Hugging Face Zephyr and LangChain](https://huggingface.co/blog/langchain)
-- [Advanced RAG on Hugging Face documentation using LangChain](https://huggingface.co/blog/langchain)
+- [Simple RAG for GitHub issues using Hugging Face Zephyr and LangChain](https://huggingface.co/learn/cookbook/en/rag_zephyr_langchain)
+- [Advanced RAG on Hugging Face documentation using LangChain](https://huggingface.co/learn/cookbook/en/advanced_rag)
 
 ---
